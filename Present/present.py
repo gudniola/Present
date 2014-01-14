@@ -1,25 +1,41 @@
 import re
-import sys
 import os
+import sys
 import argparse
 
 import pyjade
 import mako.template
 
 
-def inline_javascript(html_src, path):
+def inline_javascript(html_src, path=None):
     """Inlines every included javascript file"""
-    return html_src
+    javascript_re = re.compile("\<script src\=\"([0-9a-zA-Z./]+)\"\>\</script>")
+
+    def fetch_jssource(in_match):
+        rel_path = in_match.group(1)
+        jspath = os.path.join(path, rel_path)
+        return "<script>\n{0}\n</script>".format(open(jspath, 'r').read())
+
+    return javascript_re.sub(fetch_jssource, html_src)
 
 
-def inline_css(html_src, path):
+def inline_css(html_src, path=None):
     """Inlines every included css file"""
-    return html_src
+    css_re = re.compile("\<link rel\=\"stylesheet\" media\=\"(screen|print)\" href\=\"([0-9a-zA-Z.\-_/]+)\"\>")
+
+    def fetch_jssource(in_match):
+        #media_type = in_match.group(1)
+        rel_path = in_match.group(2)
+        csspath = os.path.join(path, rel_path)
+        return "<style>\n{0}\n</style>".format(open(csspath, 'r').read())
+        #return "<style media=\"{0}\">\n{1}\n</style>".format(media_type, open(csspath, 'r').read())
+
+    return css_re.sub(fetch_jssource, html_src)
 
 
 def render_html(html_template, slides_src):
     """Applies namespace to in_html_template"""
-    return mako.template.Template(html_template).render(slides=slides_src)
+    return mako.template.Template(html_template, input_encoding='utf-8', output_encoding='utf-8').render(slides=slides_src)
 
 
 def parse_jade(presentation_src):
@@ -37,10 +53,10 @@ def render_presentation(presentation_src):
         boilerplate_template = btf.read()
 
     #Inline javascript
-    boilerplate_template = inline_javascript(boilerplate_template)
+    boilerplate_template = inline_javascript(boilerplate_template, "res/deck.js/")
 
     #Inline CSS
-    boilerplate_template = inline_css(boilerplate_template)
+    boilerplate_template = inline_css(boilerplate_template, "res/deck.js/")
 
     #parse_jade
     slides_src = parse_jade(presentation_src)
